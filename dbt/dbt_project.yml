@@ -1,0 +1,23 @@
+name: 'market_intelligence_dbt'
+version: '1.0.0'
+config-version: 2
+
+profile: 'market_intelligence_dbt'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  market_intelligence_dbt:
+    staging:
+      +schema: staging
+      +materialized: view
+    marts:
+      +materialized: table

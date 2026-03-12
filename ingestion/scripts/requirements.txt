@@ -1,0 +1,39 @@
+import requests
+import pandas as pd
+from sqlalchemy import create_engine, text
+
+DB_USER = "postgres"
+DB_PASSWORD = "postgres"
+DB_HOST = "localhost"
+DB_PORT = "5432"
+DB_NAME = "market_intelligence"
+
+engine = create_engine(
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+def ensure_raw_schema():
+    with engine.begin() as conn:
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS raw;"))
+
+def load_external_market_data():
+    response = requests.get("http://localhost:5000/market-data", timeout=30)
+    response.raise_for_status()
+    df = pd.DataFrame(response.json())
+    df.to_sql("raw_market_data", engine, schema="raw", if_exists="replace", index=False)
+    print(f"Loaded {len(df)} rows into raw.raw_market_data")
+
+def copy_internal_tables():
+    tables = ["customers", "products", "orders"]
+
+    for table in tables:
+        query = f"SELECT * FROM public.{table}"
+        df = pd.read_sql(query, engine)
+        df.to_sql(f"raw_{table}", engine, schema="raw", if_exists="replace", index=False)
+        print(f"Loaded {len(df)} rows into raw.raw_{table}")
+
+if __name__ == "__main__":
+    ensure_raw_schema()
+    copy_internal_tables()
+    load_external_market_data()
+    print("Raw ingestion completed successfully.")
